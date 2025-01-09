@@ -9,28 +9,18 @@ def fix_marks(schoolkid):
         mark.save()
 
 
-# schoolkid = Schoolkid.objects.get(full_name="Фролов Иван")
-# fix_marks(schoolkid)
-
-
 def remove_chastisements(schoolkid):
     chastisements = Chastisement.objects.filter(schoolkid=schoolkid)
     chastisements.delete()
 
 
-# schoolkid = Schoolkid.objects.get(full_name="Фролов Иван")
-# remove_chastisements(schoolkid)
-
 def create_commendation(student_name, chosen_subject="Математика"):
     try:
         student = Schoolkid.objects.get(full_name__icontains=student_name)
-        print(f"Найден ученик: {student.full_name} {student.year_of_study}{student.group_letter}")
     except Schoolkid.DoesNotExist:
-        print(f"Ученик с именем {student_name} не найден.")
-        return
+        raise ValidationError(f"Ученик с именем {student_name} не найден.")
     except Schoolkid.MultipleObjectsReturned:
-        print(f"Найдено несколько учеников с именем {student_name}. Уточните имя.")
-        return
+        raise ValidationError(f"Найдено несколько учеников с именем {student_name}. Уточните имя.")
 
     year_of_study = student.year_of_study
     group_letter = student.group_letter
@@ -43,8 +33,7 @@ def create_commendation(student_name, chosen_subject="Математика"):
         chosen_subject = chosen_subjects.first()
 
     if not chosen_subject:
-        print(f"Предмет {chosen_subject} не найден для {year_of_study}{group_letter}.")
-        return
+        raise ValueError(f"Предмет {chosen_subject} не найден для {year_of_study}{group_letter}.")
 
     lessons = Lesson.objects.filter(
         subject=chosen_subject,
@@ -53,8 +42,7 @@ def create_commendation(student_name, chosen_subject="Математика"):
     ).order_by('-date')
 
     if not lessons:
-        print(f"Уроки по предмету {chosen_subject.title} для {year_of_study}{group_letter} не найдены.")
-        return
+        raise ValueError(f"Уроки по предмету {chosen_subject.title} для {year_of_study}{group_letter} не найдены.")
 
     random_lesson = random.choice(lessons)
 
@@ -68,4 +56,3 @@ def create_commendation(student_name, chosen_subject="Математика"):
         teacher=random_lesson.teacher
     )
     commendation.save()
-    print(f"Похвала для {student_name} по предмету {chosen_subject.title} успешно добавлена!")
