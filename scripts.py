@@ -1,12 +1,22 @@
-import random
 from datacenter.models import Schoolkid, Lesson, Commendation, Subject, Mark, Chastisement
+from django.core.exceptions import ValidationError
+
+praise_text = "Хвалю!"
+
+
+def get_student_by_name(student_name):
+    try:
+        student = Schoolkid.objects.get(full_name__icontains=student_name)
+        return student
+    except Schoolkid.DoesNotExist:
+        raise ValidationError(f"Ученик с именем {student_name} не найден.")
+    except Schoolkid.MultipleObjectsReturned:
+        raise ValidationError(f"Найдено несколько учеников с именем {student_name}. Уточните имя.")
 
 
 def fix_marks(schoolkid):
     bad_marks = Mark.objects.filter(schoolkid=schoolkid, points__in=[2, 3])
-    for mark in bad_marks:
-        mark.points = 5
-        mark.save()
+    bad_marks.update(points=5)
 
 
 def remove_chastisements(schoolkid):
@@ -15,12 +25,7 @@ def remove_chastisements(schoolkid):
 
 
 def create_commendation(student_name, chosen_subject="Математика"):
-    try:
-        student = Schoolkid.objects.get(full_name__icontains=student_name)
-    except Schoolkid.DoesNotExist:
-        raise ValidationError(f"Ученик с именем {student_name} не найден.")
-    except Schoolkid.MultipleObjectsReturned:
-        raise ValidationError(f"Найдено несколько учеников с именем {student_name}. Уточните имя.")
+    student = get_student_by_name(student_name)
 
     year_of_study = student.year_of_study
     group_letter = student.group_letter
@@ -39,20 +44,17 @@ def create_commendation(student_name, chosen_subject="Математика"):
         subject=chosen_subject,
         year_of_study=year_of_study,
         group_letter=group_letter
-    ).order_by('-date')
+    ).order_by('?')
 
-    if not lessons:
+    random_lesson = lessons.first()
+
+    if random_lesson is None:
         raise ValueError(f"Уроки по предмету {chosen_subject.title} для {year_of_study}{group_letter} не найдены.")
 
-    random_lesson = random.choice(lessons)
-
-    praise_text = "Хвалю!"
-
-    commendation = Commendation.objects.create(
+    Commendation.objects.create(
         text=praise_text,
         created=random_lesson.date,
         schoolkid=student,
         subject=chosen_subject,
         teacher=random_lesson.teacher
     )
-    commendation.save()
